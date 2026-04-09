@@ -1,37 +1,33 @@
-{
-  "name": "TaskPulse — Work Reminder",
-  "short_name": "TaskPulse",
-  "description": "Your personal work reminder assistant",
-  "start_url": "/index.html",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0f0f0f",
-  "scope": "/",
-  "lang": "en",
-  "categories": ["productivity", "utilities"],
-  "icons": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Add Reminder",
-      "short_name": "Add",
-      "description": "Jump to add a new reminder",
-      "url": "/index.html#add",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
-    }
-  ]
-}
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
+
+// Ask permission
+Notification.requestPermission().then(async (permission) => {
+  if (permission === "granted") {
+    console.log("Permission granted");
+
+    const token = await getToken(messaging, {
+      vapidKey: "YOUR_VAPID_KEY"
+    });
+
+    console.log("FCM TOKEN:", token);
+  }
+});
+
+// Foreground notification
+onMessage(messaging, (payload) => {
+  new Notification(payload.notification.title, {
+    body: payload.notification.body
+  });
+});
