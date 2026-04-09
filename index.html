@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0f0f0f"/>
+  <meta name="description" content="Your personal work reminder assistant"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <title>TaskPulse — Work Reminder</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1e1e1e;
+      --border: #2a2a2a;
+      --accent: #c8f135;
+      --accent2: #35f1c8;
+      --text: #f0f0f0;
+      --muted: #666;
+      --danger: #ff4d4d;
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: var(--accent); }
+
+    #clock {
+      font-size: 13px;
+      color: var(--accent2);
+      letter-spacing: 2px;
+    }
+
+    #install-btn {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #install-btn:hover { opacity: 0.85; }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    .add-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 40px;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 160px;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    input, select, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="time"] { cursor: pointer; }
+    select option { background: #1e1e1e; }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .priority-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .priority-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+
+    .priority-btn.active[data-p="low"]    { border-color: var(--accent2); color: var(--accent2); background: rgba(53,241,200,0.08); }
+    .priority-btn.active[data-p="medium"] { border-color: #f1c135; color: #f1c135; background: rgba(241,193,53,0.08); }
+    .priority-btn.active[data-p="high"]   { border-color: var(--danger); color: var(--danger); background: rgba(255,77,77,0.08); }
+
+    .add-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .add-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .add-btn:active { transform: translateY(0); }
+
+    /* ✅ FIX: Notification banner — use visibility toggle via JS only */
+    #notif-banner {
+      background: rgba(200,241,53,0.07);
+      border: 1px solid rgba(200,241,53,0.25);
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #notif-banner.hidden { display: none; }
+
+    #notif-status {
+      background: rgba(255,77,77,0.07);
+      border: 1px solid rgba(255,77,77,0.25);
+      border-radius: 10px;
+      padding: 10px 20px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: var(--danger);
+      display: none;
+    }
+
+    #allow-notif {
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tasks-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .tasks-title {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    #task-count {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    #tasks-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      animation: fadeUp 0.3s ease both;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .task-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+    }
+
+    .task-card[data-p="low"]::before    { background: var(--accent2); }
+    .task-card[data-p="medium"]::before { background: #f1c135; }
+    .task-card[data-p="high"]::before   { background: var(--danger); }
+
+    .task-card:hover { border-color: #3a3a3a; transform: translateX(2px); }
+    .task-card.done { opacity: 0.4; }
+    .task-card.done .task-name { text-decoration: line-through; }
+
+    .task-check {
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid var(--border);
+      border-radius: 50%;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .task-check:hover { border-color: var(--accent); }
+    .task-card.done .task-check { background: var(--accent); border-color: var(--accent); }
+    .task-check::after {
+      content: '✓';
+      font-size: 11px;
+      color: #0a0a0a;
+      display: none;
+    }
+    .task-card.done .task-check::after { display: block; }
+
+    .task-body { flex: 1; min-width: 0; }
+
+    .task-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .task-meta {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .task-time { color: var(--accent2); }
+
+    .task-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-icon { font-size: 40px; margin-bottom: 16px; opacity: 0.4; }
+
+    .empty-text {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(200,241,53,0.07);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .pulse-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      main { padding: 24px 16px; }
+      .form-row, .form-row-2 { grid-template-columns: 1fr; }
+      .add-section { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Task<span>Pulse</span></div>
+  <div id="clock">--:--:--</div>
+  <button id="install-btn">⬇ Install App</button>
+</header>
+
+<main>
+
+  <!-- ✅ FIX: Banner starts hidden, shown by JS based on permission state -->
+  <div id="notif-banner" class="hidden">
+    <span><span class="pulse-dot"></span>Enable notifications to receive reminders on time</span>
+    <button id="allow-notif">Allow</button>
+  </div>
+
+  <!-- Shown when notifications are blocked -->
+  <div id="notif-status"></div>
+
+  <div class="add-section">
+    <div class="section-label">New Reminder</div>
+    <div class="form-row">
+      <input type="text" id="task-name" placeholder="What do you need to do?"/>
+      <input type="time" id="task-time"/>
+    </div>
+    <div class="form-row-2">
+      <select id="task-repeat">
+        <option value="none">No repeat</option>
+        <option value="daily">Every day</option>
+        <option value="weekdays">Weekdays</option>
+        <option value="weekends">Weekends</option>
+      </select>
+      <select id="task-category">
+        <option value="work">Work</option>
+        <option value="meeting">Meeting</option>
+        <option value="break">Break</option>
+        <option value="personal">Personal</option>
+        <option value="health">Health</option>
+      </select>
+    </div>
+    <textarea id="task-note" placeholder="Add a note (optional)"></textarea>
+    <div class="priority-row" style="margin-top:12px">
+      <span style="font-size:11px;color:var(--muted);align-self:center;margin-right:4px">Priority:</span>
+      <button class="priority-btn active" data-p="low">Low</button>
+      <button class="priority-btn" data-p="medium">Medium</button>
+      <button class="priority-btn" data-p="high">High</button>
+    </div>
+    <button class="add-btn" onclick="addTask()">+ Add Reminder</button>
+  </div>
+
+  <div class="tasks-header">
+    <div class="tasks-title"><span class="pulse-dot"></span>Reminders</div>
+    <span id="task-count">0 tasks</span>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" data-filter="work" onclick="setFilter('work', this)">Work</button>
+    <button class="filter-btn" data-filter="meeting" onclick="setFilter('meeting', this)">Meeting</button>
+    <button class="filter-btn" data-filter="break" onclick="setFilter('break', this)">Break</button>
+    <button class="filter-btn" data-filter="personal" onclick="setFilter('personal', this)">Personal</button>
+    <button class="filter-btn" data-filter="health" onclick="setFilter('health', this)">Health</button>
+  </div>
+
+  <div id="tasks-list"></div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ── State ────────────────────────────────────────────────
+  let tasks = JSON.parse(localStorage.getItem('taskpulse_tasks') || '[]');
+  let selectedPriority = 'low';
+  let currentFilter = 'all';
+  let deferredInstallPrompt = null;
+
+  // ── Clock ────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('en-IN', { hour12: false });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── Service Worker ───────────────────────────────────────
+  // Only register SW when self-hosted (not inside Claude/iframe previews)
+  const isSelfHosted = location.protocol === 'https:' &&
+    !location.hostname.includes('claudeusercontent.com') &&
+    !location.hostname.includes('claude.ai');
+
+  if ('serviceWorker' in navigator && isSelfHosted) {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      console.log('[TaskPulse] SW registered:', reg.scope);
+    }).catch(err => {
+      console.warn('[TaskPulse] SW registration failed:', err);
+    });
+  }
+
+  // ── Install prompt ───────────────────────────────────────
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const btn = document.getElementById('install-btn');
+    btn.style.display = 'flex';
+    btn.onclick = () => {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(() => {
+        btn.style.display = 'none';
+        deferredInstallPrompt = null;
+      });
+    };
+  });
+
+  // ── ✅ FIX: Notification permission handling ──────────────
+  const banner = document.getElementById('notif-banner');
+  const statusBox = document.getElementById('notif-status');
+
+  function checkNotifPermission() {
+    if (!('Notification' in window)) {
+      statusBox.style.display = 'block';
+      statusBox.textContent = '⚠️ This browser does not support notifications.';
+      return;
+    }
+
+    if (Notification.permission === 'default') {
+      // Not yet asked — show the Allow banner
+      banner.classList.remove('hidden');
+      statusBox.style.display = 'none';
+    } else if (Notification.permission === 'denied') {
+      // Blocked — tell user how to fix it
+      banner.classList.add('hidden');
+      statusBox.style.display = 'block';
+      statusBox.innerHTML = '🚫 Notifications are <strong>blocked</strong> in your browser. '
+        + 'Click the 🔒 lock icon in the address bar → Site settings → Allow notifications, then reload.';
+    } else if (Notification.permission === 'granted') {
+      // Already granted — hide both
+      banner.classList.add('hidden');
+      statusBox.style.display = 'none';
+    }
+  }
+
+  document.getElementById('allow-notif').onclick = () => {
+    Notification.requestPermission().then(p => {
+      checkNotifPermission();
+      if (p === 'granted') {
+        showToast('Notifications enabled ✓');
+        // Send a test notification so user confirms it works
+        new Notification('✅ TaskPulse', {
+          body: 'Notifications are working! You\'ll be reminded on time.',
+          icon: 'icons/icon-192.png'
+        });
+        scheduleAll();
+      } else if (p === 'denied') {
+        showToast('Notifications blocked — check browser settings');
+      }
+    });
+  };
+
+  checkNotifPermission();
+
+  // ── ✅ FIX: Send notification (with SW fallback) ──────────
+  function sendNotification(task) {
+    if (Notification.permission !== 'granted') return;
+
+    const opts = {
+      body: task.name + (task.note ? '\n' + task.note : ''),
+      icon: 'icons/icon-192.png',
+      badge: 'icons/icon-192.png',
+      tag: 'taskpulse-' + task.id,
+      requireInteraction: true,
+      silent: false
+    };
+
+    // Use SW notification when available (works in background), else direct API
+    if (isSelfHosted && navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification('⏰ TaskPulse Reminder', opts);
+      });
+    } else {
+      new Notification('⏰ TaskPulse Reminder', opts);
+    }
+  }
+
+  // ── ✅ FIX: Scheduler — handles same-day, next-day & repeats ──
+  const timers = {};
+
+  function getNextFire(task) {
+    if (!task.time) return null;
+
+    const now = new Date();
+    const [h, m] = task.time.split(':').map(Number);
+    const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+
+    // Build a candidate time for today
+    let target = new Date(now);
+    target.setHours(h, m, 0, 0);
+
+    // If that time has already passed today, move to tomorrow
+    if (target <= now) {
+      target.setDate(target.getDate() + 1);
+    }
+
+    // For repeat modes, skip days that don't match
+    if (task.repeat === 'weekdays' || task.repeat === 'weekends') {
+      for (let i = 0; i < 7; i++) {
+        const d = target.getDay();
+        const isWeekend = d === 0 || d === 6;
+        if (task.repeat === 'weekdays' && !isWeekend) break;
+        if (task.repeat === 'weekends' && isWeekend) break;
+        target.setDate(target.getDate() + 1);
+      }
+    }
+
+    // 'none': only fire if it's still in the future (could be today)
+    if (task.repeat === 'none') {
+      const candidate = new Date(now);
+      candidate.setHours(h, m, 0, 0);
+      if (candidate <= now) return null; // already passed today, won't repeat
+    }
+
+    return target;
+  }
+
+  function scheduleTask(task) {
+    // Clear existing timer
+    if (timers[task.id]) {
+      clearTimeout(timers[task.id]);
+      delete timers[task.id];
+    }
+
+    if (task.done || !task.time) return;
+
+    const target = getNextFire(task);
+    if (!target) return;
+
+    const diff = target - Date.now();
+    if (diff <= 0) return;
+
+    console.log(`[TaskPulse] Scheduled "${task.name}" in ${Math.round(diff/1000)}s (${target.toLocaleTimeString()})`);
+
+    timers[task.id] = setTimeout(() => {
+      sendNotification(task);
+      showToast('🔔 ' + task.name);
+
+      // ✅ FIX: Re-schedule repeating tasks for the next occurrence
+      if (task.repeat !== 'none') {
+        // Small delay so getNextFire advances past this firing
+        setTimeout(() => scheduleTask(task), 2000);
+      }
+    }, diff);
+  }
+
+  function scheduleAll() {
+    tasks.filter(t => !t.done).forEach(scheduleTask);
+  }
+
+  // ── Priority buttons ─────────────────────────────────────
+  document.querySelectorAll('.priority-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedPriority = btn.dataset.p;
+    };
+  });
+
+  // ── Add task ─────────────────────────────────────────────
+  function addTask() {
+    const name = document.getElementById('task-name').value.trim();
+    const time = document.getElementById('task-time').value;
+    const repeat = document.getElementById('task-repeat').value;
+    const category = document.getElementById('task-category').value;
+    const note = document.getElementById('task-note').value.trim();
+
+    if (!name) { showToast('Please enter a task name'); return; }
+    if (!time) { showToast('Please set a reminder time'); return; }
+
+    // ✅ Warn if notifications not granted
+    if (Notification.permission !== 'granted') {
+      showToast('⚠️ Allow notifications first to receive reminders!');
+    }
+
+    const task = {
+      id: Date.now(),
+      name, time, repeat, category, note,
+      priority: selectedPriority,
+      done: false,
+      created: new Date().toISOString()
+    };
+
+    tasks.unshift(task);
+    saveTasks();
+    scheduleTask(task);
+    renderTasks();
+
+    const target = getNextFire(task);
+    const timeStr = target ? target.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'soon';
+    showToast('Reminder set for ' + timeStr + ' ✓');
+
+    document.getElementById('task-name').value = '';
+    document.getElementById('task-time').value = '';
+    document.getElementById('task-note').value = '';
+  }
+
+  // ── Filter ────────────────────────────────────────────────
+  function setFilter(filter, el) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderTasks();
+  }
+
+  // ── Render ────────────────────────────────────────────────
+  function renderTasks() {
+    const list = document.getElementById('tasks-list');
+    const filtered = currentFilter === 'all'
+      ? tasks
+      : tasks.filter(t => t.category === currentFilter);
+
+    document.getElementById('task-count').textContent =
+      filtered.length + (filtered.length === 1 ? ' task' : ' tasks');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">◷</div>
+          <div class="empty-text">No reminders yet</div>
+          <div style="font-size:12px;margin-top:6px;color:var(--muted)">Add one above to get started</div>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((task, i) => `
+      <div class="task-card ${task.done ? 'done' : ''}" data-p="${task.priority}"
+           style="animation-delay:${i * 0.04}s">
+        <div class="task-check" onclick="toggleDone(${task.id})"></div>
+        <div class="task-body">
+          <div class="task-name">${escHtml(task.name)}</div>
+          <div class="task-meta">
+            <span class="task-time">⏰ ${formatTime(task.time)}</span>
+            <span>${task.category}</span>
+            <span>${task.repeat !== 'none' ? '🔁 ' + task.repeat : 'once'}</span>
+            <span>${priorityLabel(task.priority)}</span>
+          </div>
+          ${task.note ? `<div class="task-note">${escHtml(task.note)}</div>` : ''}
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" onclick="deleteTask(${task.id})" title="Delete">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function toggleDone(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) {
+      t.done = !t.done;
+      saveTasks();
+      // Cancel or re-schedule
+      if (t.done) {
+        if (timers[t.id]) { clearTimeout(timers[t.id]); delete timers[t.id]; }
+      } else {
+        scheduleTask(t);
+      }
+      renderTasks();
+    }
+  }
+
+  function deleteTask(id) {
+    if (timers[id]) { clearTimeout(timers[id]); delete timers[id]; }
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    renderTasks();
+    showToast('Reminder removed');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  function saveTasks() {
+    localStorage.setItem('taskpulse_tasks', JSON.stringify(tasks));
+  }
+
+  function formatTime(t) {
+    if (!t) return '--';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return ((h % 12) || 12) + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  }
+
+  function priorityLabel(p) {
+    return { low: '🟢 low', medium: '🟡 medium', high: '🔴 high' }[p] || p;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  renderTasks();
+  scheduleAll();
+
+  // Re-schedule every minute to handle midnight rollover
+  setInterval(scheduleAll, 60000);
+
+  // Page visibility: re-schedule when tab becomes active again
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) scheduleAll();
+  });
+</script>
+</body>
+</html>
